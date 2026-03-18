@@ -1,7 +1,7 @@
 # NEU Library Visitor Check-in System
 
 **Live Demo**:  
-https://jaronaltares.github.io/NEU-Library/
+[https://jaronaltares.github.io/NEU-Library/](https://neu-library-visitor-2d7cb.web.app)
 
 A web app for checking in visitors at New Era University Library using Google login and Supabase.
 
