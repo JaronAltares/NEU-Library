@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEU Library – Sign In</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <header>
+    <div class="logo-container">
+      <img src="neulogo.png" alt="NEU Logo">
+      <h1>New Era University Library</h1>
+    </div>
+  </header>
+
+  <div class="container hero">
+    <h2>Your Gateway to Knowledge</h2>
+    <p>Sign in with your NEU institutional Google account (@neu.edu.ph)</p>
+
+    <button id="googleBtn" class="google-btn">
+      <img src="google.webp" alt="Google">
+      Sign in with Google
+    </button>
+
+    <!-- Eye-pleasing Scan ID section -->
+    <div class="scan-section">
+      <p class="scan-text">Or scan your NEU ID card</p>
+      <button class="scan-btn">
+        <span class="scan-icon">📷</span>
+        Scan ID Card
+      </button>
+      <p class="scan-note">(Camera access will be requested)</p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { signInWithGoogle, supabase } from './auth.js';
+
+    document.getElementById('googleBtn').addEventListener('click', signInWithGoogle);
+
+    // Optional: future scan button logic
+    document.querySelector('.scan-btn').addEventListener('click', () => {
+      alert('Scan ID feature is under development.\nIt will use your camera to read the ID card.');
+    });
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Check-in – NEU Library</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+  <header>
+    <div class="logo-container">
+      <img src="neulogo.png" alt="NEU Logo">
+      <h1>New Era University Library</h1>
+    </div>
+    <div class="user-info">
+      <button class="signout-btn" onclick="logout()">Sign Out</button>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- FORM SECTION – always shown first -->
+    <div id="formSection">
+      <h2 style="color:var(--gold); text-align:center; margin-bottom:1.5rem;">
+        Complete Your Visit
+      </h2>
+
+      <form id="checkinForm">
+        <div class="form-group">
+          <label>School / Employee ID</label>
+          <input type="text" id="school_id" placeholder="24-13177-101" required>
+        </div>
+
+        <div class="form-group">
+          <label>First Name</label>
+          <input type="text" id="first_name" required>
+        </div>
+
+        <div class="form-group">
+          <label>Last Name</label>
+          <input type="text" id="last_name" required>
+        </div>
+
+        <div class="form-group">
+          <label>College / Department</label>
+          <select id="college" required>
+            <option value="">— Select —</option>
+            <option value="College of Computer Studies">College of Computer Studies</option>
+            <option value="College of Engineering">College of Engineering</option>
+            <option value="College of Nursing">College of Nursing</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Purpose of Visit</label>
+          <select id="purpose" required>
+            <option value="">— Select —</option>
+            <option value="Reading Books">Reading Books</option>
+            <option value="Research / Thesis">Research / Thesis</option>
+            <option value="Borrowing Books">Borrowing Books</option>
+            <option value="Using Computer">Using Computer</option>
+            <option value="Doing Assignments">Doing Assignments</option>
+          </select>
+        </div>
+
+        <button type="submit" class="primary-btn">Check In</button>
+      </form>
+    </div>
+
+    <!-- SUCCESS SECTION – only shown after successful submit -->
+    <div id="successSection" style="display:none;">
+      <div class="success-card">
+        <div class="check-icon">✔</div>
+        <h1>Welcome to the<br>NEU Library!</h1>
+
+        <div class="user-name-id" id="displayNameId"></div>
+
+        <div class="tags">
+          <span class="tag" id="displayPurpose"></span>
+          <span class="tag" id="displayCollege"></span>
+          <span class="tag time-tag" id="displayTime"></span>
+        </div>
+
+        <p class="message">Your visit has been logged. Enjoy your time at the library!</p>
+
+        <button class="new-visit-btn" onclick="location.reload()">New Visit</button>
+
+        <!-- ROLE SWITCHER will be inserted here -->
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module">
+    import { supabase, logout } from './auth.js';
+    window.logout = logout;
+
+    // Only these two emails can see/use role switcher
+    const ROLE_SWITCH_ALLOWED = [
+      'jaron.altares@neu.edu.ph'.toLowerCase(),
+      'jcesperanza@neu.edu.ph'.toLowerCase()
+    ];
+
+    // Force form visible on page load
+    document.getElementById('formSection').style.display = 'block';
+    document.getElementById('successSection').style.display = 'none';
+
+    // Pre-fill form if profile exists
+    document.addEventListener('DOMContentLoaded', async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        window.location.href = './index.html';
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id, first_name, last_name, college')
+        .eq('id', user.id)
+        .single();
+
+      if (profile) {
+        document.getElementById('school_id').value   = profile.school_id   || '';
+        document.getElementById('first_name').value  = profile.first_name  || '';
+        document.getElementById('last_name').value   = profile.last_name   || '';
+        document.getElementById('college').value     = profile.college     || '';
+      }
+    });
+
+    // Form submission
+    document.getElementById('checkinForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const profileData = {
+        school_id: document.getElementById('school_id').value.trim(),
+        first_name: document.getElementById('first_name').value.trim(),
+        last_name: document.getElementById('last_name').value.trim(),
+        college: document.getElementById('college').value
+      };
+
+      const visitData = {
+        purpose: document.getElementById('purpose').value,
+        college: document.getElementById('college').value
+      };
+
+      // Save profile
+      const { error: profileErr } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          ...profileData,
+          email: user.email,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'id' });
+
+      if (profileErr) {
+        alert('Profile save failed: ' + profileErr.message);
+        return;
+      }
+
+      // Save visit
+      const { error: visitErr } = await supabase
+        .from('visits')
+        .insert({
+          user_id: user.id,
+          ...visitData,
+          visit_time: new Date().toISOString()
+        });
+
+      if (visitErr) {
+        alert('Visit log failed: ' + visitErr.message);
+        return;
+      }
+
+      // Show success screen
+      document.getElementById('formSection').style.display = 'none';
+      document.getElementById('successSection').style.display = 'block';
+
+      document.getElementById('displayNameId').textContent = 
+        `${profileData.first_name} ${profileData.last_name} • ${profileData.school_id}`;
+
+      document.getElementById('displayPurpose').textContent = visitData.purpose;
+      document.getElementById('displayCollege').textContent = visitData.college;
+
+      const now = new Date();
+      document.getElementById('displayTime').textContent = now.toLocaleString('en-PH', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+
+      // ROLE SWITCHER – only for allowed users
+      if (ROLE_SWITCH_ALLOWED.includes(user.email.toLowerCase())) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        const currentRole = profile?.role || 'user';
+        const nextRole = currentRole === 'admin' ? 'user' : 'admin';
+
+        const toggleHTML = `
+          <div style="margin-top:30px; padding:20px; background:rgba(255,255,255,0.08); border-radius:12px; border:1px solid var(--gold); text-align:center;">
+            <p style="margin-bottom:12px; font-weight:500;">
+              Current Role: <strong>${currentRole.toUpperCase()}</strong>
+            </p>
+            <button id="toggleRoleBtn" class="primary-btn" style="background:#ff9800; width:100%;">
+              Switch to ${nextRole.toUpperCase()}
+            </button>
+          </div>
+        `;
+
+        document.getElementById('successSection').insertAdjacentHTML('beforeend', toggleHTML);
+
+        document.getElementById('toggleRoleBtn').addEventListener('click', async () => {
+          if (!confirm(`Switch role to ${nextRole.toUpperCase()}?`)) return;
+
+          const { error } = await supabase
+            .from('profiles')
+            .update({ role: nextRole })
+            .eq('id', user.id);
+
+          if (error) {
+            alert('Role change failed: ' + error.message);
+            return;
+          }
+
+          alert(`Role changed to ${nextRole.toUpperCase()}! Redirecting...`);
+
+          // Critical fix: direct redirect based on new role
+          if (nextRole === 'admin') {
+            window.location.href = './admin.html';  // Go straight to dashboard
+          } else {
+            window.location.href = './checkin.html';  // Back to check-in form
+          }
+        });
+      }
+    });
+  </script>
+
+</body>
+</html>
